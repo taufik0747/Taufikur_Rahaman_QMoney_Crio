@@ -11,20 +11,19 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-//import java.nio.file.Files;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+//import java.util.stream.Collectors;
+//import java.util.stream.Stream;
 import org.apache.logging.log4j.ThreadContext;
 import org.springframework.web.client.RestTemplate;
 
@@ -71,7 +70,7 @@ public class PortfolioManagerApplication {
 
   // TODO: CRIO_TASK_MODULE_CALCULATIONS
   //  Now that you have the list of PortfolioTrade and their data, calculate annualized returns
-  //  for the stocks provided in the Json.
+  //  for the stocks provi.ded in the Json.
   //  Use the function you just wrote #calculateAnnualizedReturns.
   //  Return the list of AnnualizedReturns sorted by annualizedReturns in descending order.
 
