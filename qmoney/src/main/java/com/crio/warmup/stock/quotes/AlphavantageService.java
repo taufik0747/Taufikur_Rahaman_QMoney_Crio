@@ -6,6 +6,7 @@ import static java.time.temporal.ChronoUnit.SECONDS;
 import com.crio.warmup.stock.dto.AlphavantageCandle;
 import com.crio.warmup.stock.dto.AlphavantageDailyResponse;
 import com.crio.warmup.stock.dto.Candle;
+import com.crio.warmup.stock.exception.StockQuoteServiceException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -56,6 +57,7 @@ public class AlphavantageService implements StockQuotesService {
     this.restTemplate = restTemplate;
   }
 
+
   private static ObjectMapper getObjectMapper() {
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
@@ -72,27 +74,41 @@ public class AlphavantageService implements StockQuotesService {
 
   @Override
   public List<Candle> getStockQuote(String symbol, LocalDate from, LocalDate to)
-  throws JsonProcessingException {
-    String url = buildUri(symbol);
-    String apiResponse = restTemplate.getForObject(url, String.class);
-
-    ObjectMapper mapper = getObjectMapper();
-
-    Map<LocalDate, AlphavantageCandle> dailyResponses = mapper.readValue(apiResponse, AlphavantageDailyResponse.class).getCandles();
-
+  throws JsonProcessingException, StockQuoteServiceException, RuntimeException {
+    
     List<Candle> stocks = new ArrayList<>();
+    Map<LocalDate, AlphavantageCandle> dailyResponses;
 
-    for(LocalDate date = from; !date.isAfter(to); date =date.plusDays(1)){
-      AlphavantageCandle candle = dailyResponses.get(date);
+    try{
+      String response = restTemplate.getForObject(buildUri(symbol), String.class);
 
-      if(candle!=null) {
-        candle.setDate(date);
-        stocks.add(candle);
+      ObjectMapper objectMapper = getObjectMapper();
+      objectMapper.registerModule(new JavaTimeModule());
+
+      dailyResponses = objectMapper.readValue(response, AlphavantageDailyResponse.class).getCandles();
+
+      for(LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
+        AlphavantageCandle candle = dailyResponses.get(date);
+
+        if(candle!=null) {
+          candle.setDate(date);
+          stocks.add(candle);
+        }
       }
+    } catch(NullPointerException e) {
+      throw new StockQuoteServiceException("Alphavantage returned invalid response", e);
     }
+
     return stocks;
 
-  }
-
 }  
+  // TODO: CRIO_TASK_MODULE_EXCEPTIONS
+  //   1. Update the method signature to match the signature change in the interface.
+  //   2. Start throwing new StockQuoteServiceException when you get some invalid response from
+  //      Alphavantage, or you encounter a runtime exception during Json parsing.
+  //   3. Make sure that the exception propagates all the way from PortfolioManager, so that the
+  //      external user's of our API are able to explicitly handle this exception upfront.
+  //CHECKSTYLE:OFF
+
+}
 

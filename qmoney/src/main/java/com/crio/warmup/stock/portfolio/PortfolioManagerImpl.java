@@ -8,6 +8,7 @@ import com.crio.warmup.stock.dto.AnnualizedReturn;
 import com.crio.warmup.stock.dto.Candle;
 import com.crio.warmup.stock.dto.PortfolioTrade;
 import com.crio.warmup.stock.dto.TiingoCandle;
+import com.crio.warmup.stock.exception.StockQuoteServiceException;
 import com.crio.warmup.stock.quotes.StockQuotesService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -112,7 +113,7 @@ public class PortfolioManagerImpl implements PortfolioManager {
 
   @Override
   public List<AnnualizedReturn> calculateAnnualizedReturn(List<PortfolioTrade> portfolioTrades,
-      LocalDate endDate) {
+      LocalDate endDate) throws StockQuoteServiceException {
     AnnualizedReturn annualizedReturn;
     List<AnnualizedReturn> annualizedReturns=new ArrayList<AnnualizedReturn>();
 
@@ -130,7 +131,7 @@ public class PortfolioManagerImpl implements PortfolioManager {
   }
 
 
-  public AnnualizedReturn getAnnualizedReturn(PortfolioTrade trade, LocalDate endLocalDate) {
+  public AnnualizedReturn getAnnualizedReturn(PortfolioTrade trade, LocalDate endLocalDate) throws StockQuoteServiceException {
     AnnualizedReturn annualizedReturn;
     String symbol=trade.getSymbol();
     LocalDate startLocalDate=trade.getPurchaseDate();
@@ -168,7 +169,7 @@ public class PortfolioManagerImpl implements PortfolioManager {
   //  You also have a liberty to completely get rid of that function itself, however, make sure
   //  that you do not delete the #getStockQuote function.
 
-  public List<Candle> getStockQuote(String symbol, LocalDate startLocalDate, LocalDate endLocalDate) throws JsonProcessingException{
+  public List<Candle> getStockQuote(String symbol, LocalDate startLocalDate, LocalDate endLocalDate) throws JsonProcessingException, StockQuoteServiceException{
     return stockQuotesService.getStockQuote(symbol, startLocalDate, endLocalDate);
 
   }
