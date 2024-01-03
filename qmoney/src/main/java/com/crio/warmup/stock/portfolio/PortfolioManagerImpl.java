@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -131,36 +132,50 @@ public class PortfolioManagerImpl implements PortfolioManager {
   }
 
 
-  public AnnualizedReturn getAnnualizedReturn(PortfolioTrade trade, LocalDate endLocalDate) throws StockQuoteServiceException {
-    AnnualizedReturn annualizedReturn;
+  public AnnualizedReturn getAnnualizedReturn(PortfolioTrade trade, LocalDate endDate) throws StockQuoteServiceException {
+    
+    
+    LocalDate startDate=trade.getPurchaseDate();
+    
     String symbol=trade.getSymbol();
-    LocalDate startLocalDate=trade.getPurchaseDate();
-    
+
+    Double buyPrice = 0.0, sellPrice = 0.0;
+
     try{
+
+      LocalDate startLocalDate=trade.getPurchaseDate();
       //Fetch data
-      List<Candle> stocksStartToEndDate;
-      stocksStartToEndDate=getStockQuote(symbol, startLocalDate, endLocalDate);
+      List<Candle> stocksStartToEndFull = getStockQuote(symbol, startLocalDate, endDate);
+
+      Collections.sort(stocksStartToEndFull, (candle1, candle2) -> {
+        return candle1.getDate().compareTo(candle2.getDate());
+      });
+
       //Extract stocks for startDate & endDate
-      Candle stockStartDate=stocksStartToEndDate.get(0);
-      Candle stockLatest=stocksStartToEndDate.get(stocksStartToEndDate.size()-1);
+      Candle stockStartDate = stocksStartToEndFull.get(0);
+      Candle stockLatest=stocksStartToEndFull.get(stocksStartToEndFull.size()-1);
 
-      Double buyPrice=stockStartDate.getOpen();
-      Double sellPrice=stockLatest.getClose();
-      //calcuate total returns
-      Double totalReturn=(sellPrice-buyPrice)/buyPrice;
-      //calculate years
-      Double numYears=(double) ChronoUnit.DAYS.between(startLocalDate, endLocalDate)/365;
-      //calculate annualized returns using formula
-      Double annualizedReturns= Math.pow((1+totalReturn),(1/numYears))-1;
-
-      annualizedReturn= new AnnualizedReturn(symbol, annualizedReturns, totalReturn);
-    }
-    catch(JsonProcessingException e){
-      annualizedReturn=new AnnualizedReturn(symbol, Double.NaN, Double.NaN);
-    } 
+       buyPrice=stockStartDate.getOpen();
+       sellPrice=stockLatest.getClose();
+       endDate=stockLatest.getDate();
     
-    return annualizedReturn;
+      
+    } catch(JsonProcessingException e){
+      throw new RuntimeException();
+      } 
+       //calcuate total returns
+      Double totalReturn=(sellPrice-buyPrice)/buyPrice;
+
+      long  daysBetweenPurchaseAndSelling = ChronoUnit.DAYS.between(startDate, endDate);
+      //calculate years
+      Double totalYears=(double) (daysBetweenPurchaseAndSelling)/365;
+      //calculate annualized returns using formula
+      Double annualizedReturn= Math.pow((1+totalReturn),(1/totalYears))-1;
+
+      return new AnnualizedReturn(symbol, annualizedReturn, totalReturn);
   }
+
+  
 
 
   // ¶TODO: CRIO_TASK_MODULE_ADDITIONAL_REFACTOR
@@ -174,4 +189,38 @@ public class PortfolioManagerImpl implements PortfolioManager {
 
   }
 
+  @Override
+  public List<AnnualizedReturn> calculateAnnualizedReturnParallel(
+      List<PortfolioTrade> portfolioTrades, LocalDate endDate, int numThreads)
+      throws StockQuoteServiceException, InterruptedException {
+
+        List<AnnualizedReturn> annualizedReturns = new ArrayList<AnnualizedReturn>();
+        List<Future<AnnualizedReturn>> futureReturnsList = new ArrayList<Future<AnnualizedReturn>>();
+        final ExecutorService pool = Executors.newFixedThreadPool(numThreads);
+
+        for (int i = 0; i < portfolioTrades.size(); i++) {
+          PortfolioTrade trade = portfolioTrades.get(i);
+          Callable<AnnualizedReturn> callableTask = () -> {
+            return getAnnualizedReturn(trade, endDate);
+          };
+          Future<AnnualizedReturn> futureReturns = pool.submit(callableTask);
+          futureReturnsList.add(futureReturns);
+        }
+      
+        for (int i = 0; i < portfolioTrades.size(); i++) {
+          Future<AnnualizedReturn> futureReturns = futureReturnsList.get(i);
+          try {
+            AnnualizedReturn returns = futureReturns.get();
+            annualizedReturns.add(returns);
+          } catch (ExecutionException e) {
+            throw new StockQuoteServiceException("Error when calling the API", e);
+      
+          }
+        }
+        Collections.sort(annualizedReturns, Collections.reverseOrder());
+        return annualizedReturns;
+      }
+      
+    
 }
+
