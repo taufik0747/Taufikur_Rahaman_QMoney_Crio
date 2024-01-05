@@ -15,16 +15,12 @@ public class PortfolioManagerFactory {
 
       return new PortfolioManagerImpl(restTemplate);
 
-  // // public static PortfolioManager getPortfolioManager(RestTemplate restTemplate) {
-
-  // // }
+  
 
    }
 
 
-  // public static PortfolioManager getPortfolioManager(RestTemplate restTemplate) {
-
-  // }
+  
 
   // TODO: CRIO_TASK_MODULE_ADDITIONAL_REFACTOR
   //  Implement the method to return new instance of PortfolioManager.
